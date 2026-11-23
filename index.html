@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>أبطال جدول الضرب – Multiplication Heroes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- خط Tajawal العربي -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;800;900&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Tone.js للمؤثرات الصوتية المدمجة بدون إنترنت -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background: linear-gradient(180deg, #bae6fd 0%, #e0e7ff 45%, #fef3c7 100%);
+            min-height: 100vh;
+            user-select: none;
+            overflow-x: hidden;
+            color: #1e293b;
+        }
+
+        /* أسلوب Cartoon 3D للبطاقات والأزرار */
+        .cartoon-card {
+            background: #ffffff;
+            border: 3px solid #e2e8f0;
+            box-shadow: 0 8px 0 #cbd5e1;
+            border-radius: 1.75rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .btn-cartoon {
+            border-bottom-width: 6px;
+            transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-cartoon:active:not(:disabled) {
+            transform: translateY(4px);
+            border-bottom-width: 2px;
+        }
+
+        /* حركات كرتونية */
+        @keyframes float3D {
+            0%, 100% { transform: translateY(0px) rotate(-1deg); }
+            50% { transform: translateY(-8px) rotate(1deg); }
+        }
+        .animate-float3d { animation: float3D 3s ease-in-out infinite; }
+
+        @keyframes popIn {
+            0% { transform: scale(0.85); opacity: 0; }
+            70% { transform: scale(1.04); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-8px); }
+            40%, 80% { transform: translateX(8px); }
+        }
+        .animate-shake { animation: shake 0.35s ease-in-out; }
+
+        /* بطاقات لعبة الذاكرة */
+        .memory-card {
+            perspective: 800px;
+            cursor: pointer;
+        }
+        .memory-inner {
+            transition: transform 0.45s;
+            transform-style: preserve-3d;
+        }
+        .memory-card.flipped .memory-inner {
+            transform: rotateY(180deg);
+        }
+        .memory-front, .memory-back {
+            backface-visibility: hidden;
+        }
+        .memory-back {
+            transform: rotateY(180deg);
+        }
+
+        /* بالونات صيد الإجابة */
+        .bubble-target {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .bubble-target:active {
+            transform: scale(0.9);
+        }
+    </style>
+</head>
+<body class="flex flex-col justify-between pb-6">
+
+    <!-- الشريط العلوي: البطل، العملات، النجوم، الأرقام، ولوحة التتبع -->
+    <header class="bg-white/95 backdrop-blur-md border-b-4 border-indigo-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-6xl mx-auto px-3 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-2">
+            <!-- شخصية البطل مع الإكسسوار -->
+            <div onclick="game.goHome()" class="flex items-center gap-2.5 cursor-pointer group">
+                <div class="relative w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-b from-amber-300 to-orange-400 border-3 border-white shadow-md flex items-center justify-center text-3xl group-hover:scale-105 transition">
+                    <span id="hero-base-icon">🦁</span>
+                    <span id="hero-acc-icon" class="absolute -top-2.5 -right-1 text-xl drop-shadow">👑</span>
+                </div>
+                <div>
+                    <h1 class="font-black text-base sm:text-xl text-indigo-950 leading-tight">أبطال جدول الضرب</h1>
+                    <span id="hero-title-tag" class="text-[11px] font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full">بطل المغامرة 🇲🇦</span>
+                </div>
+            </div>
+
+            <!-- شريط الإحصائيات والأزرار السريعة -->
+            <div class="flex items-center gap-1.5 sm:gap-2.5 flex-wrap">
+                <!-- زر تبديل الأرقام (123 / ١٢٣) -->
+                <button onclick="game.toggleNumeralSystem()" id="numeral-btn" class="btn-cartoon bg-sky-100 border-sky-300 text-sky-900 font-black text-xs sm:text-sm px-3 py-2 rounded-xl" title="تبديل شكل الأرقام (فرنسية / عربية)">
+                    123 / ١٢٣
+                </button>
+
+                <!-- العملات الذهبية -->
+                <div class="flex items-center gap-1.5 bg-amber-100 border-2 border-amber-300 px-3 py-1.5 rounded-xl font-black text-amber-900 text-xs sm:text-sm">
+                    <span class="text-base">🪙</span>
+                    <span id="coins-display">0</span>
+                </div>
+
+                <!-- النجوم -->
+                <div class="flex items-center gap-1.5 bg-yellow-50 border-2 border-yellow-300 px-3 py-1.5 rounded-xl font-black text-yellow-800 text-xs sm:text-sm">
+                    <span class="text-base">⭐</span>
+                    <span id="stars-display">0</span>
+                </div>
+
+                <!-- متجر الإكسسوارات -->
+                <button onclick="game.openShop()" class="btn-cartoon bg-emerald-500 border-emerald-700 text-white font-black text-xs sm:text-sm px-3 py-2 rounded-xl flex items-center gap-1">
+                    <i class="fa-solid fa-shirt"></i>
+                    <span class="hidden sm:inline">المتجر</span>
+                </button>
+
+                <!-- لوحة تتبع التعلمات -->
+                <button onclick="game.openDashboard()" class="btn-cartoon bg-purple-600 border-purple-800 text-white font-black text-xs sm:text-sm px-3 py-2 rounded-xl flex items-center gap-1">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    <span class="hidden sm:inline">تتبع التعلم</span>
+                </button>
+
+                <!-- الصوت -->
+                <button onclick="game.toggleSound()" id="sound-btn" class="btn-cartoon bg-slate-100 border-slate-300 text-slate-700 w-9 h-9 rounded-xl flex items-center justify-center">
+                    <i class="fa-solid fa-volume-high text-indigo-600"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-grow max-w-6xl w-full mx-auto px-3 sm:px-5 pt-5">
+
+        <!-- =========================================================
+             1. الشاشة الرئيسية: خريطة العوالم (2 إلى 10) + أنماط اللعب
+             ========================================================= -->
+        <section id="screen-home" class="space-y-6 animate-pop">
+            <!-- بانر المغامرة الرئيسي -->
+            <div class="bg-gradient-to-l from-indigo-600 via-violet-600 to-fuchsia-600 rounded-3xl p-5 sm:p-7 text-white border-b-8 border-indigo-900 shadow-xl flex flex-col md:flex-row items-center justify-between gap-5">
+                <div class="space-y-2 text-center md:text-right">
+                    <span class="inline-block bg-white/20 px-3 py-1 rounded-full text-xs font-black">🎮 Multiplication Heroes • التعليم الابتدائي</span>
+                    <h2 class="text-2xl sm:text-4xl font-black">مرحباً بك في عوالم الضرب السحرية!</h2>
+                    <p class="text-indigo-100 text-sm sm:text-base max-w-xl">
+                        أكمل كل عالم بنسبة إتقان <b>80%</b> على الأقل لفتح العالم التالي، واجمع العملات الذهبية لتزيين بطلك!
+                    </p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-3 shrink-0">
+                    <button onclick="game.startMode('teacher', 0)" class="btn-cartoon bg-amber-400 border-amber-600 text-amber-950 font-black px-5 py-3.5 rounded-2xl text-sm sm:text-base flex items-center gap-2 shadow-lg">
+                        <span class="text-xl">🎓</span>
+                        <span>تحدي الأستاذ الشامل</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- شريط أنماط اللعب الستة (6 Interactive Modes) -->
+            <div class="cartoon-card p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-black text-lg sm:text-xl text-indigo-950 flex items-center gap-2">
+                        <span>🕹️</span> أنماط اللعب التفاعلية (اختر لعبتك المفضلة)
+                    </h3>
+                    <span class="text-xs font-bold text-slate-500 hidden sm:inline">تُطبق على الجداول المفتوحة لديك</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <!-- أ. تحدي السرعة -->
+                    <button onclick="game.startMode('speed', 0)" class="btn-cartoon bg-rose-50 hover:bg-rose-100 border-rose-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">⚡</div>
+                        <div class="font-black text-rose-900 text-sm">تحدي السرعة</div>
+                        <div class="text-[11px] font-bold text-rose-600">10 ثوانٍ للسؤال</div>
+                    </button>
+
+                    <!-- ب. صيد الإجابة -->
+                    <button onclick="game.startMode('hunt', 0)" class="btn-cartoon bg-sky-50 hover:bg-sky-100 border-sky-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">🎈</div>
+                        <div class="font-black text-sky-900 text-sm">صيد الإجابة</div>
+                        <div class="text-[11px] font-bold text-sky-600">التقط البالون الصحيح</div>
+                    </button>
+
+                    <!-- ج. افتح الكنز -->
+                    <button onclick="game.startMode('treasure', 0)" class="btn-cartoon bg-amber-50 hover:bg-amber-100 border-amber-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">💎</div>
+                        <div class="font-black text-amber-900 text-sm">افتح الكنز</div>
+                        <div class="text-[11px] font-bold text-amber-600">5 مفاتيح للجواهر</div>
+                    </button>
+
+                    <!-- د. تحدي الذاكرة -->
+                    <button onclick="game.startMode('memory', 0)" class="btn-cartoon bg-purple-50 hover:bg-purple-100 border-purple-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">🃏</div>
+                        <div class="font-black text-purple-900 text-sm">تحدي الذاكرة</div>
+                        <div class="text-[11px] font-bold text-purple-600">طابق العملية والنتيجة</div>
+                    </button>
+
+                    <!-- هـ. سباق الأبطال -->
+                    <button onclick="game.startMode('race', 0)" class="btn-cartoon bg-emerald-50 hover:bg-emerald-100 border-emerald-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">🏁</div>
+                        <div class="font-black text-emerald-900 text-sm">سباق الأبطال</div>
+                        <div class="text-[11px] font-bold text-emerald-600">اسبق نحو خط النهاية</div>
+                    </button>
+
+                    <!-- و. تحدي الأستاذ -->
+                    <button onclick="game.startMode('teacher', 0)" class="btn-cartoon bg-indigo-50 hover:bg-indigo-100 border-indigo-300 p-3.5 rounded-2xl text-center space-y-1.5">
+                        <div class="text-3xl">👨‍🏫</div>
+                        <div class="font-black text-indigo-900 text-sm">تحدي الأستاذ</div>
+                        <div class="text-[11px] font-bold text-indigo-600">10 أسئلة دون مساعدة</div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- خريطة عوالم جدول الضرب (من 2 إلى 10) -->
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="font-black text-xl sm:text-2xl text-indigo-950 flex items-center gap-2">
+                        <span>🗺️</span> خريطة العوالم (عالم 2 إلى عالم 10)
+                    </h3>
+                    <span id="unlocked-worlds-badge" class="bg-white border-2 border-indigo-200 text-indigo-800 font-black text-xs sm:text-sm px-3.5 py-1 rounded-full">
+                        العوالم المفتوحة: 1 / 9
+                    </span>
+                </div>
+
+                <div id="worlds-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- يتم توليد العوالم 2 إلى 10 هنا -->
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================================================
+             2. شاشة اختيار التدرج البيداغوجي للعالم المختار
+             ========================================================= -->
+        <section id="screen-world-detail" class="hidden max-w-3xl mx-auto space-y-5 animate-pop">
+            <button onclick="game.goHome()" class="btn-cartoon bg-white border-slate-300 text-slate-700 font-black px-4 py-2.5 rounded-2xl text-sm flex items-center gap-2">
+                <i class="fa-solid fa-arrow-right"></i> العودة إلى خريطة العوالم
+            </button>
+
+            <div class="cartoon-card p-6 sm:p-8 text-center space-y-6">
+                <div id="world-banner-icon" class="w-20 h-20 mx-auto rounded-3xl bg-indigo-100 text-5xl flex items-center justify-center shadow-inner animate-float3d">
+                    🌴
+                </div>
+                <div>
+                    <h2 id="world-detail-title" class="text-2xl sm:text-3xl font-black text-indigo-950">عالم جدول 2</h2>
+                    <p id="world-detail-desc" class="text-slate-500 font-bold text-sm mt-1">تدرّج في المراحل خطوة بخطوة لإتقان هذا العالم بنسبة 80% على الأقل!</p>
+                </div>
+
+                <!-- التدرج البيداغوجي (4 مراحل متدرجة) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-right">
+                    <!-- المرحلة 1: استكشاف وتدريب بسيط دون توقيت -->
+                    <div onclick="game.startWorldStage(1)" class="cursor-pointer btn-cartoon bg-sky-50 hover:bg-sky-100 border-sky-300 p-5 rounded-3xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-sky-500 text-white text-xs font-black px-3 py-1 rounded-full">المرحلة 1 • تدريب بسيط</span>
+                            <span class="text-2xl">🌱</span>
+                        </div>
+                        <h4 class="font-black text-lg text-sky-950">الاستكشاف والتدريب الهادئ</h4>
+                        <p class="text-xs text-sky-700 font-bold">تمارين متدرجة دون توقيت مع تلميحات بصرية للمساعدة.</p>
+                    </div>
+
+                    <!-- المرحلة 2: تمارين متوسطة (سباق الأبطال أو الكنز) -->
+                    <div onclick="game.startWorldStage(2)" class="cursor-pointer btn-cartoon bg-emerald-50 hover:bg-emerald-100 border-emerald-300 p-5 rounded-3xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-emerald-500 text-white text-xs font-black px-3 py-1 rounded-full">المرحلة 2 • متوسط</span>
+                            <span class="text-2xl">🏁</span>
+                        </div>
+                        <h4 class="font-black text-lg text-emerald-950">سباق الأبطال وفتح الكنز</h4>
+                        <p class="text-xs text-emerald-700 font-bold">تطبيق تفاعلي ممتع لترسيخ العمليات في الذاكرة.</p>
+                    </div>
+
+                    <!-- المرحلة 3: تحدي السرعة وصيد الإجابة -->
+                    <div onclick="game.startWorldStage(3)" class="cursor-pointer btn-cartoon bg-amber-50 hover:bg-amber-100 border-amber-300 p-5 rounded-3xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-amber-500 text-white text-xs font-black px-3 py-1 rounded-full">المرحلة 3 • سرعة</span>
+                            <span class="text-2xl">⚡</span>
+                        </div>
+                        <h4 class="font-black text-lg text-amber-950">تحدي السرعة (10 ثوانٍ)</h4>
+                        <p class="text-xs text-amber-800 font-bold">اختبر سرعة بديهتك في الإجابة قبل انتهاء الوقت!</p>
+                    </div>
+
+                    <!-- المرحلة 4: اختبار الأستاذ الرسمي لفتح العالم التالي -->
+                    <div onclick="game.startWorldStage(4)" class="cursor-pointer btn-cartoon bg-purple-50 hover:bg-purple-100 border-purple-400 p-5 rounded-3xl space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="bg-purple-600 text-white text-xs font-black px-3 py-1 rounded-full">المرحلة 4 • اختبار العبور</span>
+                            <span class="text-2xl">🎓</span>
+                        </div>
+                        <h4 class="font-black text-lg text-purple-950">اختبار إتقان العالم (80%+)</h4>
+                        <p class="text-xs text-purple-700 font-bold">10 أسئلة بدون مساعدة. حقق 8/10 لفتح العالم التالي!</p>
+                    </div>
+                </div>
+
+                <!-- بطاقة عرض جدول العالم للحفظ السريع -->
+                <div class="bg-slate-50 rounded-2xl p-4 border-2 border-slate-200">
+                    <h4 class="font-black text-sm text-slate-700 mb-3">📖 بطاقة المراجعة السريعة لهذا الجدول:</h4>
+                    <div id="world-reference-grid" class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm font-black"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =========================================================
+             3. شاشة اللعب النشطة (تستوعب جميع الأنماط الستة)
+             ========================================================= -->
+        <section id="screen-play" class="hidden max-w-3xl mx-auto space-y-4 animate-pop">
+            <!-- شريط التحكم العلوي أثناء اللعب -->
+            <div class="cartoon-card p-3.5 flex items-center justify-between gap-3">
+                <button onclick="game.goHome()" class="btn-cartoon bg-rose-100 border-rose-300 text-rose-800 font-black px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-house"></i> القائمة الرئيسية
+                </button>
+
+                <div class="text-center">
+                    <span id="play-mode-badge" class="font-black text-sm sm:text-base text-indigo-950">تحدي السرعة</span>
+                    <div id="play-progress-label" class="text-xs font-bold text-slate-500">سؤال 1 من 10</div>
+                </div>
+
+                <button onclick="game.restartCurrentSession()" class="btn-cartoon bg-amber-100 border-amber-300 text-amber-900 font-black px-3.5 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i> إعادة اللعب
+                </button>
+            </div>
+
+            <!-- مؤقت 10 ثوانٍ (يظهر في تحدي السرعة) -->
+            <div id="speed-timer-box" class="hidden bg-white rounded-2xl p-3 border-2 border-rose-200 shadow-sm">
+                <div class="flex justify-between text-xs font-black text-rose-700 mb-1">
+                    <span>⏳ الوقت المتبقي للسؤال:</span>
+                    <span id="speed-timer-text">10 ثوانٍ</span>
+                </div>
+                <div class="w-full h-3.5 bg-rose-100 rounded-full overflow-hidden">
+                    <div id="speed-timer-bar" class="h-full bg-rose-500 transition-all duration-200 rounded-full" style="width: 100%"></div>
+                </div>
+            </div>
+
+            <!-- حلبة سباق الأبطال (تظهر في وضع سباق الأبطال) -->
+            <div id="race-track-box" class="hidden cartoon-card p-4 bg-gradient-to-l from-emerald-50 to-sky-50 space-y-2">
+                <div class="flex justify-between text-xs font-black text-emerald-900">
+                    <span>🏁 خط النهاية</span>
+                    <span id="race-pct-text">التقدم: 0%</span>
+                </div>
+                <div class="relative w-full h-12 bg-slate-200 rounded-2xl border-2 border-slate-300 flex items-center px-3 overflow-hidden">
+                    <div class="absolute left-3 text-2xl">🏆</div>
+                    <div id="racer-avatar" class="text-3xl transition-all duration-500 transform" style="margin-right: 0%">🦁</div>
+                </div>
+            </div>
+
+            <!-- صندوق الكنز والمفاتيح (يظهر في وضع افتح الكنز) -->
+            <div id="treasure-box-panel" class="hidden cartoon-card p-4 bg-gradient-to-r from-amber-50 to-yellow-100 border-amber-300 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span id="treasure-chest-icon" class="text-4xl animate-float3d">🧰</span>
+                    <div>
+                        <h4 class="font-black text-amber-950 text-sm sm:text-base">اجمع 5 مفاتيح ذهبية لفتح الكنز!</h4>
+                        <div id="treasure-keys-row" class="flex gap-1.5 text-xl mt-1">🔑 🔑 🔑 🔑 🔑</div>
+                    </div>
+                </div>
+                <span id="treasure-count-badge" class="bg-amber-500 text-white font-black px-3 py-1.5 rounded-xl text-sm">0 / 5</span>
+            </div>
+
+            <!-- أ. منطقة الأسئلة القياسية (التدريب، السرعة، الكنز، السباق، الأستاذ) -->
+            <div id="standard-question-area" class="cartoon-card p-6 sm:p-9 text-center space-y-6">
+                <!-- رسالة التغذية الراجعة الإيجابية أو التصحيحية -->
+                <div id="feedback-box" class="hidden rounded-2xl p-3.5 font-black text-sm sm:text-base animate-pop"></div>
+
+                <div>
+                    <p id="question-prompt" class="text-slate-400 font-bold text-sm mb-2">اختر الجواب الصحيح:</p>
+                    <div id="equation-display" class="text-5xl sm:text-7xl font-black text-indigo-950 tracking-wider py-2" dir="ltr">
+                        7 × 8 = ?
+                    </div>
+                </div>
+
+                <!-- 4 اختيارات كبيرة واضحة للأطفال -->
+                <div id="choices-grid" class="grid grid-cols-2 gap-3.5 sm:gap-4"></div>
+            </div>
+
+            <!-- ب. منطقة لعبة صيد الإجابة (Balloons / Moving Targets) -->
+            <div id="hunt-game-area" class="hidden cartoon-card p-4 space-y-3">
+                <div class="text-center bg-indigo-50 py-3 rounded-2xl border-2 border-indigo-200">
+                    <span class="text-xs font-bold text-indigo-600 block">اصطد البالون الذي يحمل نتيجة:</span>
+                    <span id="hunt-equation" class="text-4xl sm:text-5xl font-black text-indigo-950" dir="ltr">6 × 4 = ?</span>
+                </div>
+                <div id="hunt-canvas-arena" class="relative w-full h-80 sm:h-96 bg-gradient-to-b from-sky-200 to-sky-50 rounded-2xl border-2 border-sky-300 overflow-hidden">
+                    <!-- البالونات المتحركة تُحقن هنا -->
+                </div>
+            </div>
+
+            <!-- ج. منطقة تحدي الذاكرة (Memory Cards) -->
+            <div id="memory-game-area" class="hidden cartoon-card p-5 space-y-4">
+                <div class="flex items-center justify-between">
+                    <span class="font-black text-indigo-950 text-sm sm:text-base">🃏 طابق كل عملية ضرب مع نتيجتها الصحيحة!</span>
+                    <span id="memory-pairs-badge" class="bg-purple-100 text-purple-800 font-black text-xs px-3 py-1 rounded-full">0 / 6 أزواج</span>
+                </div>
+                <div id="memory-grid" class="grid grid-cols-3 sm:grid-cols-4 gap-3"></div>
+            </div>
+        </section>
+
+        <!-- =========================================================
+             4. شاشة النتائج والاحتفال (Results & Mastery Check)
+             ========================================================= -->
+        <section id="screen-result" class="hidden max-w-xl mx-auto animate-pop">
+            <div class="cartoon-card p-7 sm:p-9 text-center space-y-6">
+                <div id="result-stars-row" class="flex items-center justify-center gap-3 text-5xl">
+                    ⭐ ⭐ ⭐
+                </div>
+
+                <div class="space-y-2">
+                    <h2 id="result-heading" class="text-3xl font-black text-indigo-950">عمل رائع يا بطل! 🎉</h2>
+                    <p id="result-message" class="text-slate-600 font-bold text-sm sm:text-base">لقد أنهيت التحدي بنجاح!</p>
+                </div>
+
+                <!-- شريط نسبة الإتقان (شرط 80% لفتح العالم التالي) -->
+                <div class="bg-slate-50 p-4 rounded-2xl border-2 border-slate-200 space-y-2">
+                    <div class="flex justify-between text-xs sm:text-sm font-black">
+                        <span>نسبة الإتقان المحققة:</span>
+                        <span id="result-accuracy-pct" class="text-emerald-600">90%</span>
+                    </div>
+                    <div class="w-full h-4 bg-slate-200 rounded-full overflow-hidden">
+                        <div id="result-accuracy-bar" class="h-full bg-emerald-500 rounded-full transition-all duration-500" style="width: 90%"></div>
+                    </div>
+                    <p id="result-unlock-note" class="text-xs font-bold text-indigo-600 pt-1"></p>
+                </div>
+
+                <!-- ملخص المكافآت -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-emerald-700">الإجابات</div>
+                        <div id="res-score-val" class="text-xl font-black text-emerald-900 mt-1">9 / 10</div>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-amber-700">عملات ذهبية</div>
+                        <div id="res-coins-val" class="text-xl font-black text-amber-900 mt-1">+45 🪙</div>
+                    </div>
+                    <div class="bg-sky-50 border border-sky-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-sky-700">الوقت</div>
+                        <div id="res-time-val" class="text-xl font-black text-sky-900 mt-1">32 ث</div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button onclick="game.restartCurrentSession()" class="flex-1 btn-cartoon bg-indigo-600 border-indigo-800 text-white font-black py-3.5 rounded-2xl">
+                        <i class="fa-solid fa-rotate-right ml-1"></i> إعادة اللعب
+                    </button>
+                    <button onclick="game.goHome()" class="flex-1 btn-cartoon bg-amber-400 border-amber-600 text-amber-950 font-black py-3.5 rounded-2xl">
+                        <i class="fa-solid fa-map ml-1"></i> خريطة العوالم
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- =========================================================
+         5. نافذة متجر الملابس والإكسسوارات والشخصيات (Shop Modal)
+         ========================================================= -->
+    <div id="modal-shop" class="hidden fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="cartoon-card max-w-lg w-full p-6 space-y-5 max-h-[88vh] flex flex-col animate-pop">
+            <div class="flex items-center justify-between border-b-2 border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-xl font-black text-indigo-950">🛍️ متجر الأبطال والإكسسوارات</h3>
+                    <p class="text-xs font-bold text-slate-500">اشترِ شخصيات وإكسسوارات بعملاتك الذهبية!</p>
+                </div>
+                <button onclick="game.closeModal('modal-shop')" class="w-9 h-9 rounded-full bg-slate-100 font-black text-slate-600">✕</button>
+            </div>
+
+            <div class="overflow-y-auto space-y-5 pr-1">
+                <div>
+                    <h4 class="font-black text-sm text-indigo-800 mb-2">1. اختر بطلك المفضل:</h4>
+                    <div id="shop-heroes-grid" class="grid grid-cols-3 gap-2.5"></div>
+                </div>
+                <div>
+                    <h4 class="font-black text-sm text-amber-800 mb-2">2. الإكسسوارات والتيجان:</h4>
+                    <div id="shop-acc-grid" class="grid grid-cols-3 gap-2.5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================
+         6. لوحة تتبع التعلمات والشارات (Learning Dashboard Modal)
+         ========================================================= -->
+    <div id="modal-dashboard" class="hidden fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="cartoon-card max-w-2xl w-full p-6 space-y-5 max-h-[90vh] flex flex-col animate-pop">
+            <div class="flex items-center justify-between border-b-2 border-slate-100 pb-3">
+                <div>
+                    <h3 class="text-xl font-black text-indigo-950">📊 لوحة تتبع التعلمات والإنجازات</h3>
+                    <p class="text-xs font-bold text-slate-500">تقرير شامل حول تطور مستوى المتعلم في جدول الضرب</p>
+                </div>
+                <button onclick="game.closeModal('modal-dashboard')" class="w-9 h-9 rounded-full bg-slate-100 font-black text-slate-600">✕</button>
+            </div>
+
+            <div class="overflow-y-auto space-y-5 pr-1">
+                <!-- المؤشرات الأربعة الرئيسية -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div class="bg-emerald-50 border-2 border-emerald-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-emerald-700">نسبة الإجابات الصحيحة</div>
+                        <div id="dash-accuracy" class="text-2xl font-black text-emerald-900 mt-1">0%</div>
+                    </div>
+                    <div class="bg-amber-50 border-2 border-amber-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-amber-700">النجوم والعملات</div>
+                        <div id="dash-rewards" class="text-lg font-black text-amber-900 mt-1">0 ⭐ | 0 🪙</div>
+                    </div>
+                    <div class="bg-sky-50 border-2 border-sky-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-sky-700">الوقت المستغرق</div>
+                        <div id="dash-time" class="text-2xl font-black text-sky-900 mt-1">0 د</div>
+                    </div>
+                    <div class="bg-purple-50 border-2 border-purple-200 p-3 rounded-2xl">
+                        <div class="text-xs font-bold text-purple-700">الجداول المتقنة</div>
+                        <div id="dash-mastered" class="text-2xl font-black text-purple-900 mt-1">0 / 9</div>
+                    </div>
+                </div>
+
+                <!-- تطور المستويات (2 إلى 10) -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2.5">
+                    <h4 class="font-black text-sm text-slate-800">📈 التطور في عوالم الضرب (2 إلى 10):</h4>
+                    <div id="dash-worlds-progress" class="grid grid-cols-3 sm:grid-cols-9 gap-2 text-center"></div>
+                </div>
+
+                <!-- العمليات التي يجد فيها صعوبة + زر تدريب مخصص عليها -->
+                <div class="bg-rose-50/70 p-4 rounded-2xl border-2 border-rose-200 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-black text-sm text-rose-900">🎯 العمليات التي تحتاج لمراجعة إضافية:</h4>
+                        <button onclick="game.closeModal('modal-dashboard'); game.startMode('weakness', 0);" class="bg-rose-600 hover:bg-rose-500 text-white font-black text-xs px-3 py-1.5 rounded-xl">
+                            تدرّب عليها الآن
+                        </button>
+                    </div>
+                    <div id="dash-hard-ops" class="flex flex-wrap gap-2 text-xs font-black"></div>
+                </div>
+
+                <!-- الشارات المكتسبة -->
+                <div class="space-y-2">
+                    <h4 class="font-black text-sm text-indigo-950">🏅 شارات الأبطال:</h4>
+                    <div id="dash-badges-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * نظام المؤثرات الصوتية المدمج (يعمل بدون إنترنت عبر Web Audio / Tone.js)
+         */
+        class GameAudio {
+            constructor() {
+                this.enabled = true;
+                this.synth = null;
+            }
+            init() {
+                if (!this.synth && window.Tone) {
+                    this.synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    this.synth.volume.value = -6;
+                }
+            }
+            playCorrect() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (Tone.context.state !== 'running') Tone.start();
+                    this.synth.triggerAttackRelease("E5", "16n");
+                    setTimeout(() => this.synth.triggerAttackRelease("A5", "16n"), 80);
+                } catch (e) {}
+            }
+            playWrong() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (Tone.context.state !== 'running') Tone.start();
+                    this.synth.triggerAttackRelease(["C3", "F#2"], "8n");
+                } catch (e) {}
+            }
+            playFanfare() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (Tone.context.state !== 'running') Tone.start();
+                    ["C5", "E5", "G5", "C6"].forEach((n, i) => {
+                        setTimeout(() => this.synth.triggerAttackRelease(n, "8n"), i * 110);
+                    });
+                } catch (e) {}
+            }
+            playClick() {
+                if (!this.enabled) return;
+                try {
+                    this.init();
+                    if (Tone.context.state !== 'running') Tone.start();
+                    this.synth.triggerAttackRelease("G5", "32n");
+                } catch (e) {}
+            }
+        }
+
+        /**
+         * المحرك الرئيسي للعبة «أبطال جدول الضرب – Multiplication Heroes»
+         */
+        const game = {
+            audio: new GameAudio(),
+            state: {
+                arabicNumerals: false, // false = 123 (المعتمد بالمغرب), true = ١٢٣
+                coins: 50,
+                totalCorrect: 0,
+                totalAnswered: 0,
+                totalSecondsSpent: 0,
+                unlockedMaxWorld: 2, // يبدأ بعالم جدول 2 مفتوحاً
+                worldStars: {},      // { 2: 3, 3: 2, ... }
+                worldBestPct: {},    // { 2: 90, ... }
+                mistakesCount: {},   // { "7x8": 3 } لتكرار العمليات الصعبة بيداغوجياً
+                heroIcon: '🦁',
+                accIcon: '👑',
+                ownedHeroes: ['🦁'],
+                ownedAccs: ['👑', ''],
+                badges: []
+            },
+
+            // بيانات العوالم من 2 إلى 10
+            worldsData: [
+                { num: 2, name: 'عالم جدول 2', theme: 'غابة التوائم السعيدة', icon: '🌴', color: 'from-emerald-400 to-teal-600' },
+                { num: 3, name: 'عالم جدول 3', theme: 'جزيرة الأهرامات الثلاثة', icon: '🏜️', color: 'from-amber-400 to-orange-500' },
+                { num: 4, name: 'عالم جدول 4', theme: 'قلعة الفرسان الأربعة', icon: '🏰', color: 'from-sky-400 to-blue-600' },
+                { num: 5, name: 'عالم جدول 5', theme: 'وادي النجوم الخماسية', icon: '⭐', color: 'from-yellow-400 to-amber-500' },
+                { num: 6, name: 'عالم جدول 6', theme: 'خلية النحل الذهبية', icon: '🐝', color: 'from-orange-400 to-red-500' },
+                { num: 7, name: 'عالم جدول 7', theme: 'قوس قزح العجيب', icon: '🌈', color: 'from-pink-500 to-rose-600' },
+                { num: 8, name: 'عالم جدول 8', theme: 'أعماق الأخطبوط الذكي', icon: '🐙', color: 'from-indigo-500 to-purple-600' },
+                { num: 9, name: 'عالم جدول 9', theme: 'كواكب الفضاء التسعة', icon: '🪐', color: 'from-violet-600 to-fuchsia-700' },
+                { num: 10, name: 'عالم جدول 10', theme: 'قمة ملوك الحساب', icon: '👑', color: 'from-amber-500 to-yellow-600' }
+            ],
+
+            // متجر الشخصيات والإكسسوارات
+            heroesCatalog: [
+                { icon: '🦁', name: 'الأسد الشجاع', price: 0 },
+                { icon: '🦊', name: 'الثعلب الذكي', price: 60 },
+                { icon: '🐼', name: 'الباندا اللطيف', price: 100 },
+                { icon: '🦄', name: 'الحصان السحري', price: 150 },
+                { icon: '🤖', name: 'الروبوت البطل', price: 220 },
+                { icon: '🐉', name: 'التنين الأسطوري', price: 300 }
+            ],
+            accsCatalog: [
+                { icon: '', name: 'بدون إكسسوار', price: 0 },
+                { icon: '👑', name: 'تاج الملك', price: 0 },
+                { icon: '🎓', name: 'قبعة التخرج', price: 50 },
+                { icon: '🕶️', name: 'نظارة الأبطال', price: 80 },
+                { icon: '⚡', name: 'شعار البرق', price: 120 },
+                { icon: '🚀', name: 'صاروخ التفوق', price: 180 }
+            ],
+
+            // الشارات التحفيزية
+            badgesCatalog: [
+                { id: 'hero_2', title: 'بطل جدول 2', desc: 'أتقن عالم جدول 2 بنسبة 80%+', icon: '🌴' },
+                { id: 'hero_5', title: 'نجم جدول 5', desc: 'أتقن عالم جدول 5 بنسبة 80%+', icon: '⭐' },
+                { id: 'hero_9', title: 'ساحر جدول 9', desc: 'أتقن عالم جدول 9 بنسبة 80%+', icon: '🪐' },
+                { id: 'genius_mult', title: 'عبقري الضرب', desc: 'أجب على 50 عملية صحيحة', icon: '🧠' },
+                { id: 'treasure_hunter', title: 'صائد الكنوز', desc: 'افتح صندوق الكنز بنجاح', icon: '💎' },
+                { id: 'math_king', title: 'ملك الحساب', desc: 'افتح وأتقن جميع العوالم (2-10)', icon: '👑' }
+            ],
+
+            // متغيرات الجلسة الحالية
+            currentMode: 'practice', // 'practice' | 'speed' | 'hunt' | 'treasure' | 'memory' | 'race' | 'teacher' | 'weakness'
+            currentWorldNum: 0,      // 0 = شامل، 2..10 = عالم محدد
+            currentStageNum: 1,      // 1..4 للمراحل البيداغوجية
+            questions: [],
+            qIndex: 0,
+            sessionCorrect: 0,
+            sessionCoins: 0,
+            sessionStartTime: 0,
+            questionTimer: null,
+            huntIntervals: [],
+            timeLeft: 10,
+            lockedInput: false,
+
+            init() {
+                this.loadSave();
+                this.updateTopBar();
+                this.renderWorldsMap();
+            },
+
+            // تحويل الأرقام حسب اختيار التلميذ (123 أو ١٢٣)
+            fmt(val) {
+                const str = String(val);
+                if (!this.state.arabicNumerals) return str;
+                const map = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                return str.replace(/[0-9]/g, d => map[Number(d)]);
+            },
+
+            toggleNumeralSystem() {
+                this.audio.playClick();
+                this.state.arabicNumerals = !this.state.arabicNumerals;
+                this.saveData();
+                this.updateTopBar();
+                if (!document.getElementById('screen-home').classList.contains('hidden')) {
+                    this.renderWorldsMap();
+                } else if (!document.getElementById('screen-world-detail').classList.contains('hidden')) {
+                    this.openWorld(this.currentWorldNum);
+                }
+            },
+
+            loadSave() {
+                try {
+                    const raw = localStorage.getItem('multiplication_heroes_ma_v1');
+                    if (raw) this.state = { ...this.state, ...JSON.parse(raw) };
+                } catch (e) {}
+            },
+
+            saveData() {
+                this.evaluateBadges();
+                try {
+                    localStorage.setItem('multiplication_heroes_ma_v1', JSON.stringify(this.state));
+                } catch (e) {}
+                this.updateTopBar();
+            },
+
+            evaluateBadges() {
+                const addBadge = (id) => {
+                    if (!this.state.badges.includes(id)) this.state.badges.push(id);
+                };
+                if ((this.state.worldBestPct[2] || 0) >= 80) addBadge('hero_2');
+                if ((this.state.worldBestPct[5] || 0) >= 80) addBadge('hero_5');
+                if ((this.state.worldBestPct[9] || 0) >= 80) addBadge('hero_9');
+                if (this.state.totalCorrect >= 50) addBadge('genius_mult');
+                const allMastered = [2,3,4,5,6,7,8,9,10].every(w => (this.state.worldBestPct[w] || 0) >= 80);
+                if (allMastered) addBadge('math_king');
+            },
+
+            updateTopBar() {
+                document.getElementById('coins-display').textContent = this.fmt(this.state.coins);
+                const totalStars = Object.values(this.state.worldStars).reduce((a, b) => a + b, 0);
+                document.getElementById('stars-display').textContent = this.fmt(totalStars);
+                document.getElementById('hero-base-icon').textContent = this.state.heroIcon;
+                document.getElementById('hero-acc-icon').textContent = this.state.accIcon;
+                document.getElementById('numeral-btn').textContent = this.state.arabicNumerals ? 'أرقام: ١٢٣' : 'أرقام: 123';
+
+                const unlockedCount = Math.min(9, this.state.unlockedMaxWorld - 1);
+                document.getElementById('unlocked-worlds-badge').textContent =
+                    `العوالم المفتوحة: ${this.fmt(unlockedCount)} / ${this.fmt(9)}`;
+            },
+
+            hideScreens() {
+                clearInterval(this.questionTimer);
+                this.clearHuntBubbles();
+                ['screen-home', 'screen-world-detail', 'screen-play', 'screen-result'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+            },
+
+            goHome() {
+                this.audio.playClick();
+                this.hideScreens();
+                this.renderWorldsMap();
+                document.getElementById('screen-home').classList.remove('hidden');
+            },
+
+            // رسم خريطة العوالم (2 إلى 10)
+            renderWorldsMap() {
+                const grid = document.getElementById('worlds-grid');
+                grid.innerHTML = '';
+
+                this.worldsData.forEach(w => {
+                    const isUnlocked = w.num <= this.state.unlockedMaxWorld;
+                    const stars = this.state.worldStars[w.num] || 0;
+                    const bestPct = this.state.worldBestPct[w.num] || 0;
+                    const isCompleted = bestPct >= 80;
+
+                    const card = document.createElement('div');
+                    card.className = `cartoon-card p-5 relative overflow-hidden flex flex-col justify-between gap-4 ${isUnlocked ? 'cursor-pointer hover:-translate-y-1' : 'opacity-75 bg-slate-100'}`;
+
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${isUnlocked ? w.color : 'from-slate-400 to-slate-500'} text-white flex items-center justify-center text-3xl shadow-md">
+                                ${isUnlocked ? w.icon : '🔒'}
+                            </div>
+                            <div class="text-left">
+                                <span class="inline-block text-xs font-black px-3 py-1 rounded-full ${isCompleted ? 'bg-emerald-100 text-emerald-800' : (isUnlocked ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-200 text-slate-600')}">
+                                    ${isCompleted ? `مُتقن ${this.fmt(bestPct)}% ✓` : (isUnlocked ? 'مفتوح للعب' : `أكمل عالم ${this.fmt(w.num - 1)} أولاً`)}
+                                </span>
+                                <div class="text-base mt-1">
+                                    ${[1, 2, 3].map(s => `<span class="${s <= stars ? 'opacity-100' : 'opacity-25'}">⭐</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h4 class="font-black text-xl text-indigo-950">${w.name.replace(w.num, this.fmt(w.num))}</h4>
+                            <p class="text-xs font-bold text-slate-500 mt-0.5">${w.theme}</p>
+                        </div>
+
+                        <button class="w-full py-2.5 rounded-xl font-black text-sm ${isUnlocked ? 'bg-indigo-600 text-white' : 'bg-slate-300 text-slate-600'}">
+                            ${isUnlocked ? 'دخول العالم 🚀' : 'مغلق 🔒'}
+                        </button>
+                    `;
+
+                    card.onclick = () => {
+                        if (!isUnlocked) {
+                            this.audio.playWrong();
+                            card.classList.add('animate-shake');
+                            setTimeout(() => card.classList.remove('animate-shake'), 350);
+                            return;
+                        }
+                        this.openWorld(w.num);
+                    };
+
+                    grid.appendChild(card);
+                });
+            },
+
+            // فتح تفاصيل عالم معين وتدرجه البيداغوجي
+            openWorld(num) {
+                this.audio.playClick();
+                this.currentWorldNum = num;
+                const w = this.worldsData.find(item => item.num === num);
+                this.hideScreens();
+                document.getElementById('screen-world-detail').classList.remove('hidden');
+
+                document.getElementById('world-banner-icon').textContent = w.icon;
+                document.getElementById('world-detail-title').textContent = `عالم جدول ${this.fmt(num)} – ${w.theme}`;
+
+                // بطاقة المراجعة السريعة للجدول (1 إلى 10)
+                const refGrid = document.getElementById('world-reference-grid');
+                refGrid.innerHTML = '';
+                for (let i = 1; i <= 10; i++) {
+                    refGrid.innerHTML += `
+                        <div class="bg-white border border-indigo-100 rounded-xl py-2 px-2 text-center text-indigo-950 shadow-sm" dir="ltr">
+                            ${this.fmt(num)} × ${this.fmt(i)} = <span class="text-indigo-600">${this.fmt(num * i)}</span>
+                        </div>
+                    `;
+                }
+            },
+
+            // تشغيل مرحلة من مراحل التدرج البيداغوجي داخل العالم
+            startWorldStage(stage) {
+                this.currentStageNum = stage;
+                if (stage === 1) this.startMode('practice', this.currentWorldNum);
+                else if (stage === 2) this.startMode('race', this.currentWorldNum);
+                else if (stage === 3) this.startMode('speed', this.currentWorldNum);
+                else if (stage === 4) this.startMode('teacher', this.currentWorldNum);
+            },
+
+            // توليد الأسئلة بذكاء بيداغوجي (مع تكرار العمليات التي يخطئ فيها المتعلم)
+            buildPedagogicalQuestions(worldNum, count) {
+                const pool = [];
+                const allowedTables = worldNum > 0
+                    ? [worldNum]
+                    : Array.from({ length: this.state.unlockedMaxWorld - 1 }, (_, i) => i + 2);
+
+                // 1. إضافة العمليات التي أخطأ فيها المتعلم سابقاً أولاً لتقويتها
+                const weakKeys = Object.keys(this.state.mistakesCount || {}).filter(k => {
+                    const [a, b] = k.split('x').map(Number);
+                    return allowedTables.includes(a) || allowedTables.includes(b);
+                });
+
+                weakKeys.forEach(k => {
+                    const [a, b] = k.split('x').map(Number);
+                    pool.push({ a, b, ans: a * b, isReview: true });
+                });
+
+                // 2. إكمال باقي الأسئلة بتدرج من الأسهل إلى الأصعب
+                const multipliers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                while (pool.length < count) {
+                    const t = allowedTables[Math.floor(Math.random() * allowedTables.length)];
+                    const m = multipliers[pool.length % 10];
+                    const swap = Math.random() > 0.5 && worldNum === 0;
+                    const a = swap ? m : t;
+                    const b = swap ? t : m;
+                    // تجنب تكرار نفس السؤال مرتين متتاليتين
+                    const last = pool[pool.length - 1];
+                    if (!last || last.a !== a || last.b !== b) {
+                        pool.push({ a, b, ans: a * b, isReview: false });
+                    }
+                }
+
+                return pool.slice(0, count);
+            },
+
+            // بدء أي نمط من أنماط اللعب الستة
+            startMode(mode, worldNum = 0) {
+                this.audio.playClick();
+                this.currentMode = mode;
+                this.currentWorldNum = worldNum;
+                this.qIndex = 0;
+                this.sessionCorrect = 0;
+                this.sessionCoins = 0;
+                this.sessionStartTime = Date.now();
+                this.lockedInput = false;
+
+                this.hideScreens();
+                document.getElementById('screen-play').classList.remove('hidden');
+
+                // إخفاء العناصر الخاصة أولاً
+                ['speed-timer-box', 'race-track-box', 'treasure-box-panel',
+                 'standard-question-area', 'hunt-game-area', 'memory-game-area'].forEach(id => {
+                    document.getElementById(id).classList.add('hidden');
+                });
+
+                const modeTitles = {
+                    practice: '🌱 تدريب هادئ دون توقيت',
+                    speed: '⚡ تحدي السرعة (10 ثوانٍ)',
+                    hunt: '🎈 صيد الإجابة الصحيحة',
+                    treasure: '💎 افتح صندوق الكنز',
+                    memory: '🃏 تحدي الذاكرة والمطابقة',
+                    race: '🏁 سباق الأبطال',
+                    teacher: '🎓 تحدي الأستاذ (10 أسئلة)',
+                    weakness: '🎯 تقوية العمليات الصعبة'
+                };
+                document.getElementById('play-mode-badge').textContent = modeTitles[mode] || 'مغامرة الضرب';
+
+                if (mode === 'memory') {
+                    this.setupMemoryGame(worldNum);
+                    return;
+                }
+
+                const qCount = mode === 'treasure' ? 5 : (mode === 'race' ? 8 : 10);
+                this.questions = this.buildPedagogicalQuestions(worldNum, qCount);
+
+                if (mode === 'hunt') {
+                    document.getElementById('hunt-game-area').classList.remove('hidden');
+                    this.renderHuntQuestion();
+                    return;
+                }
+
+                // الأنماط المعتمدة على بطاقة الأسئلة القياسية
+                document.getElementById('standard-question-area').classList.remove('hidden');
+                if (mode === 'speed') document.getElementById('speed-timer-box').classList.remove('hidden');
+                if (mode === 'race') {
+                    document.getElementById('race-track-box').classList.remove('hidden');
+                    document.getElementById('racer-avatar').textContent = this.state.heroIcon;
+                    document.getElementById('racer-avatar').style.marginRight = '0%';
+                }
+                if (mode === 'treasure') {
+                    document.getElementById('treasure-box-panel').classList.remove('hidden');
+                    this.updateTreasureUI();
+                }
+
+                this.renderStandardQuestion();
+            },
+
+            restartCurrentSession() {
+                this.startMode(this.currentMode, this.currentWorldNum);
+            },
+
+            updateTreasureUI() {
+                document.getElementById('treasure-count-badge').textContent = `${this.fmt(this.sessionCorrect)} / ${this.fmt(5)}`;
+                const keys = Array.from({ length: 5 }, (_, i) => i < this.sessionCorrect ? '🔑' : '🔒').join(' ');
+                document.getElementById('treasure-keys-row').textContent = keys;
+            },
+
+            // عرض سؤال في الأنماط القياسية
+            renderStandardQuestion() {
+                clearInterval(this.questionTimer);
+                if (this.qIndex >= this.questions.length) {
+                    this.finishSession();
+                    return;
+                }
+
+                this.lockedInput = false;
+                const q = this.questions[this.qIndex];
+                const total = this.questions.length;
+
+                document.getElementById('play-progress-label').textContent =
+                    `سؤال ${this.fmt(this.qIndex + 1)} من ${this.fmt(total)}`;
+                document.getElementById('feedback-box').classList.add('hidden');
+                document.getElementById('equation-display').textContent =
+                    `${this.fmt(q.a)} × ${this.fmt(q.b)} = ?`;
+
+                // توليد 4 خيارات ذكية
+                const opts = this.generateChoices(q.a, q.b, q.ans);
+                const grid = document.getElementById('choices-grid');
+                grid.innerHTML = '';
+
+                opts.forEach(val => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-cartoon bg-indigo-50 hover:bg-indigo-100 border-indigo-300 text-indigo-950 font-black text-3xl sm:text-4xl py-5 rounded-2xl';
+                    btn.textContent = this.fmt(val);
+                    btn.onclick = () => this.submitStandardAnswer(val, btn);
+                    grid.appendChild(btn);
+                });
+
+                // تشغيل مؤقت 10 ثوانٍ إذا كان الوضع هو تحدي السرعة
+                if (this.currentMode === 'speed') {
+                    this.timeLeft = 10;
+                    this.updateSpeedTimerUI();
+                    this.questionTimer = setInterval(() => {
+                        this.timeLeft -= 0.2;
+                        this.updateSpeedTimerUI();
+                        if (this.timeLeft <= 0) {
+                            clearInterval(this.questionTimer);
+                            this.handleTimeOut();
+                        }
+                    }, 200);
+                }
+            },
+
+            updateSpeedTimerUI() {
+                const sec = Math.max(0, Math.ceil(this.timeLeft));
+                document.getElementById('speed-timer-text').textContent = `${this.fmt(sec)} ثوانٍ`;
+                document.getElementById('speed-timer-bar').style.width = `${Math.max(0, (this.timeLeft / 10) * 100)}%`;
+            },
+
+            handleTimeOut() {
+                if (this.lockedInput) return;
+                this.lockedInput = true;
+                this.audio.playWrong();
+                const q = this.questions[this.qIndex];
+                this.recordMistake(q.a, q.b);
+                this.state.totalAnswered++;
+
+                const fb = document.getElementById('feedback-box');
+                fb.textContent = `⏰ انتهى الوقت! الجواب الصحيح هو: ${this.fmt(q.a)} × ${this.fmt(q.b)} = ${this.fmt(q.ans)}`;
+                fb.className = 'rounded-2xl p-3.5 font-black text-sm sm:text-base bg-amber-100 text-amber-900 border-2 border-amber-300 block';
+
+                setTimeout(() => {
+                    this.qIndex++;
+                    this.renderStandardQuestion();
+                }, 1400);
+            },
+
+            submitStandardAnswer(selected, btn) {
+                if (this.lockedInput) return;
+                this.lockedInput = true;
+                clearInterval(this.questionTimer);
+
+                const q = this.questions[this.qIndex];
+                const fb = document.getElementById('feedback-box');
+                this.state.totalAnswered++;
+
+                if (selected === q.ans) {
+                    this.audio.playCorrect();
+                    this.sessionCorrect++;
+                    this.state.totalCorrect++;
+                    const earned = this.currentMode === 'speed' ? 10 : 5;
+                    this.sessionCoins += earned;
+                    this.state.coins += earned;
+
+                    // تقليل عداد الخطأ إذا أتقن العملية
+                    const k = `${q.a}x${q.b}`;
+                    if (this.state.mistakesCount[k]) {
+                        this.state.mistakesCount[k]--;
+                        if (this.state.mistakesCount[k] <= 0) delete this.state.mistakesCount[k];
+                    }
+
+                    btn.className = 'btn-cartoon bg-emerald-500 border-emerald-700 text-white font-black text-3xl sm:text-4xl py-5 rounded-2xl shadow-lg';
+                    const praises = ['أحسنت يا بطل! 🌟', 'إجابة عبقرية! 🚀', 'ممتاز جداً! 👏', 'رائع! استمر 💪'];
+                    fb.textContent = `${praises[Math.floor(Math.random() * praises.length)]} (+${this.fmt(earned)} عملات)`;
+                    fb.className = 'rounded-2xl p-3.5 font-black text-sm sm:text-base bg-emerald-100 text-emerald-900 border-2 border-emerald-300 block';
+
+                    if (this.currentMode === 'race') {
+                        const pct = Math.round((this.sessionCorrect / this.questions.length) * 85);
+                        document.getElementById('racer-avatar').style.marginRight = `${pct}%`;
+                        document.getElementById('race-pct-text').textContent = `التقدم: ${this.fmt(Math.round((this.sessionCorrect / this.questions.length) * 100))}%`;
+                    }
+                    if (this.currentMode === 'treasure') {
+                        this.updateTreasureUI();
+                    }
+
+                    setTimeout(() => {
+                        this.qIndex++;
+                        this.renderStandardQuestion();
+                    }, 850);
+
+                } else {
+                    this.audio.playWrong();
+                    this.recordMistake(q.a, q.b);
+                    btn.className = 'btn-cartoon bg-rose-500 border-rose-700 text-white font-black text-3xl sm:text-4xl py-5 rounded-2xl animate-shake';
+
+                    // عبارة إيجابية عند الخطأ مع إظهار الحل الصحيح
+                    fb.textContent = `لا بأس يا بطل، نتعلم من المحاولة! 💡 الحل الصحيح: ${this.fmt(q.a)} × ${this.fmt(q.b)} = ${this.fmt(q.ans)}`;
+                    fb.className = 'rounded-2xl p-3.5 font-black text-sm sm:text-base bg-amber-100 text-amber-950 border-2 border-amber-300 block';
+
+                    setTimeout(() => {
+                        this.qIndex++;
+                        this.renderStandardQuestion();
+                    }, 1700);
+                }
+            },
+
+            recordMistake(a, b) {
+                const k = `${a}x${b}`;
+                this.state.mistakesCount[k] = (this.state.mistakesCount[k] || 0) + 1;
+            },
+
+            generateChoices(a, b, ans) {
+                const set = new Set([ans]);
+                const near = [ans + a, ans - a, ans + b, ans - b, ans + 2, ans - 2, ans + 10].filter(n => n > 0 && n !== ans);
+                near.sort(() => Math.random() - 0.5);
+                for (let n of near) if (set.size < 4) set.add(n);
+                while (set.size < 4) {
+                    const r = ans + Math.floor(Math.random() * 12) - 6;
+                    if (r > 0) set.add(r);
+                }
+                return Array.from(set).sort(() => Math.random() - 0.5);
+            },
+
+            // =========================================================
+            // نمط ب: صيد الإجابة (بالونات تتحرك على الشاشة)
+            // =========================================================
+            clearHuntBubbles() {
+                this.huntIntervals.forEach(id => clearInterval(id));
+                this.huntIntervals = [];
+            },
+
+            renderHuntQuestion() {
+                this.clearHuntBubbles();
+                if (this.qIndex >= this.questions.length) {
+                    this.finishSession();
+                    return;
+                }
+                const q = this.questions[this.qIndex];
+                document.getElementById('play-progress-label').textContent =
+                    `سؤال ${this.fmt(this.qIndex + 1)} من ${this.fmt(this.questions.length)}`;
+                document.getElementById('hunt-equation').textContent =
+                    `${this.fmt(q.a)} × ${this.fmt(q.b)} = ?`;
+
+                const arena = document.getElementById('hunt-canvas-arena');
+                arena.innerHTML = '';
+
+                const choices = this.generateChoices(q.a, q.b, q.ans);
+                const colors = ['bg-rose-500', 'bg-amber-500', 'bg-emerald-500', 'bg-indigo-600'];
+
+                choices.forEach((val, idx) => {
+                    const bubble = document.createElement('button');
+                    bubble.className = `bubble-target ${colors[idx % colors.length]} text-white font-black text-2xl sm:text-3xl w-20 h-20 sm:w-24 sm:h-24 rounded-full shadow-xl border-4 border-white flex items-center justify-center`;
+                    bubble.textContent = this.fmt(val);
+
+                    let x = 10 + idx * 21;
+                    let y = 15 + (idx % 2) * 35;
+                    let dx = (Math.random() > 0.5 ? 1 : -1) * (0.4 + Math.random() * 0.4);
+                    let dy = (Math.random() > 0.5 ? 1 : -1) * (0.4 + Math.random() * 0.4);
+
+                    bubble.style.left = `${x}%`;
+                    bubble.style.top = `${y}%`;
+
+                    const moveId = setInterval(() => {
+                        x += dx;
+                        y += dy;
+                        if (x <= 2 || x >= 76) dx *= -1;
+                        if (y <= 2 || y >= 72) dy *= -1;
+                        bubble.style.left = `${x}%`;
+                        bubble.style.top = `${y}%`;
+                    }, 25);
+                    this.huntIntervals.push(moveId);
+
+                    bubble.onclick = () => {
+                        this.state.totalAnswered++;
+                        if (val === q.ans) {
+                            this.audio.playCorrect();
+                            this.sessionCorrect++;
+                            this.state.totalCorrect++;
+                            this.sessionCoins += 6;
+                            this.state.coins += 6;
+                            this.qIndex++;
+                            this.renderHuntQuestion();
+                        } else {
+                            this.audio.playWrong();
+                            this.recordMistake(q.a, q.b);
+                            bubble.classList.add('opacity-30', 'scale-75');
+                            bubble.disabled = true;
+                        }
+                    };
+
+                    arena.appendChild(bubble);
+                });
+            },
+
+            // =========================================================
+            // نمط د: تحدي الذاكرة (مطابقة العملية والنتيجة)
+            // =========================================================
+            setupMemoryGame(worldNum) {
+                document.getElementById('memory-game-area').classList.remove('hidden');
+                const qs = this.buildPedagogicalQuestions(worldNum, 6);
+                let cards = [];
+                qs.forEach((q, idx) => {
+                    cards.push({ pairId: idx, text: `${this.fmt(q.a)} × ${this.fmt(q.b)}`, type: 'eq' });
+                    cards.push({ pairId: idx, text: `${this.fmt(q.ans)}`, type: 'ans' });
+                });
+                cards.sort(() => Math.random() - 0.5);
+
+                let flipped = [];
+                let matchedPairs = 0;
+                document.getElementById('memory-pairs-badge').textContent = `${this.fmt(0)} / ${this.fmt(6)} أزواج`;
+                document.getElementById('play-progress-label').textContent = `أوجد الأزواج الـ ${this.fmt(6)}`;
+
+                const grid = document.getElementById('memory-grid');
+                grid.innerHTML = '';
+
+                cards.forEach(c => {
+                    const cardEl = document.createElement('div');
+                    cardEl.className = 'memory-card h-24 sm:h-28';
+                    cardEl.innerHTML = `
+                        <div class="memory-inner relative w-full h-full">
+                            <div class="memory-front absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 border-b-4 border-indigo-800 text-white flex items-center justify-center text-3xl font-black shadow">
+                                ❓
+                            </div>
+                            <div class="memory-back absolute inset-0 rounded-2xl ${c.type === 'eq' ? 'bg-amber-100 border-2 border-amber-400 text-amber-950' : 'bg-emerald-100 border-2 border-emerald-400 text-emerald-950'} flex items-center justify-center text-xl sm:text-2xl font-black shadow" dir="ltr">
+                                ${c.text}
+                            </div>
+                        </div>
+                    `;
+
+                    cardEl.onclick = () => {
+                        if (cardEl.classList.contains('flipped') || flipped.length >= 2) return;
+                        this.audio.playClick();
+                        cardEl.classList.add('flipped');
+                        flipped.push({ el: cardEl, data: c });
+
+                        if (flipped.length === 2) {
+                            this.state.totalAnswered++;
+                            const [first, second] = flipped;
+                            if (first.data.pairId === second.data.pairId) {
+                                this.audio.playCorrect();
+                                matchedPairs++;
+                                this.sessionCorrect++;
+                                this.state.totalCorrect++;
+                                this.sessionCoins += 8;
+                                this.state.coins += 8;
+                                document.getElementById('memory-pairs-badge').textContent =
+                                    `${this.fmt(matchedPairs)} / ${this.fmt(6)} أزواج`;
+                                flipped = [];
+                                if (matchedPairs === 6) {
+                                    this.questions = qs; // لتوحيد حساب النتيجة
+                                    this.sessionCorrect = 6;
+                                    setTimeout(() => this.finishSession(), 700);
+                                }
+                            } else {
+                                this.audio.playWrong();
+                                setTimeout(() => {
+                                    first.el.classList.remove('flipped');
+                                    second.el.classList.remove('flipped');
+                                    flipped = [];
+                                }, 850);
+                            }
+                        }
+                    };
+
+                    grid.appendChild(cardEl);
+                });
+            },
+
+            // =========================================================
+            // إنهاء الجلسة والتحقق من شرط الإتقان (80% لفتح العالم التالي)
+            // =========================================================
+            finishSession() {
+                clearInterval(this.questionTimer);
+                this.clearHuntBubbles();
+
+                const elapsedSec = Math.max(1, Math.round((Date.now() - this.sessionStartTime) / 1000));
+                this.state.totalSecondsSpent += elapsedSec;
+
+                const totalQ = this.questions.length || 6;
+                const pct = Math.round((this.sessionCorrect / totalQ) * 100);
+                const passed = pct >= 80;
+
+                if (this.currentMode === 'treasure' && passed) {
+                    if (!this.state.badges.includes('treasure_hunter')) {
+                        this.state.badges.push('treasure_hunter');
+                    }
+                    this.sessionCoins += 30;
+                    this.state.coins += 30;
+                }
+
+                let unlockMessage = '';
+                if (this.currentWorldNum >= 2) {
+                    const prevBest = this.state.worldBestPct[this.currentWorldNum] || 0;
+                    if (pct > prevBest) this.state.worldBestPct[this.currentWorldNum] = pct;
+
+                    const stars = pct === 100 ? 3 : (pct >= 80 ? 2 : (pct >= 50 ? 1 : 0));
+                    if (stars > (this.state.worldStars[this.currentWorldNum] || 0)) {
+                        this.state.worldStars[this.currentWorldNum] = stars;
+                    }
+
+                    if (passed && this.currentWorldNum === this.state.unlockedMaxWorld && this.state.unlockedMaxWorld < 10) {
+                        this.state.unlockedMaxWorld++;
+                        unlockMessage = `🔓 تهانينا! تم فتح عالم جدول ${this.fmt(this.state.unlockedMaxWorld)} بنجاح!`;
+                    } else if (!passed) {
+                        unlockMessage = `تحتاج إلى نسبة ${this.fmt(80)}% على الأقل لإتقان العالم وفتح المستوى التالي.`;
+                    }
+                }
+
+                this.saveData();
+                this.hideScreens();
+                document.getElementById('screen-result').classList.remove('hidden');
+
+                const starsCount = pct === 100 ? 3 : (pct >= 80 ? 2 : (pct >= 50 ? 1 : 0));
+                document.getElementById('result-stars-row').innerHTML = [1, 2, 3].map(i =>
+                    `<span class="${i <= starsCount ? 'opacity-100' : 'opacity-25'}">⭐</span>`
+                ).join('');
+
+                document.getElementById('result-heading').textContent = passed ? 'أداء أسطوري يا بطل! 🎉' : 'محاولة جيدة! واصل التدريب 💪';
+                document.getElementById('result-message').textContent = passed
+                    ? 'لقد أثبتّ جدارتك في جدول الضرب!'
+                    : 'أعد المحاولة لتحقيق نسبة إتقان 80% أو أكثر.';
+
+                document.getElementById('result-accuracy-pct').textContent = `${this.fmt(pct)}%`;
+                document.getElementById('result-accuracy-bar').style.width = `${pct}%`;
+                document.getElementById('result-accuracy-bar').className = `h-full rounded-full transition-all duration-500 ${passed ? 'bg-emerald-500' : 'bg-amber-500'}`;
+                document.getElementById('result-unlock-note').textContent = unlockMessage;
+
+                document.getElementById('res-score-val').textContent = `${this.fmt(this.sessionCorrect)} / ${this.fmt(totalQ)}`;
+                document.getElementById('res-coins-val').textContent = `+${this.fmt(this.sessionCoins)} 🪙`;
+                document.getElementById('res-time-val').textContent = `${this.fmt(elapsedSec)} ث`;
+
+                if (passed) {
+                    this.audio.playFanfare();
+                    if (window.confetti) confetti({ particleCount: 110, spread: 75, origin: { y: 0.6 } });
+                }
+            },
+
+            // =========================================================
+            // متجر الملابس والإكسسوارات
+            // =========================================================
+            openShop() {
+                this.audio.playClick();
+                this.renderShop();
+                document.getElementById('modal-shop').classList.remove('hidden');
+            },
+
+            renderShop() {
+                const hGrid = document.getElementById('shop-heroes-grid');
+                hGrid.innerHTML = this.heroesCatalog.map(h => {
+                    const owned = this.state.ownedHeroes.includes(h.icon);
+                    const equipped = this.state.heroIcon === h.icon;
+                    return `
+                        <div class="p-3 rounded-2xl border-2 ${equipped ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'} text-center space-y-1.5">
+                            <div class="text-4xl">${h.icon}</div>
+                            <div class="font-black text-xs text-slate-800">${h.name}</div>
+                            <button onclick="game.buyOrEquipHero('${h.icon}', ${h.price})" class="w-full py-1.5 rounded-xl font-black text-xs ${equipped ? 'bg-emerald-600 text-white' : (owned ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-400 text-amber-950')}">
+                                ${equipped ? 'مُختار ✓' : (owned ? 'اختيار' : `${this.fmt(h.price)} 🪙`)}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+
+                const aGrid = document.getElementById('shop-acc-grid');
+                aGrid.innerHTML = this.accsCatalog.map(a => {
+                    const owned = this.state.ownedAccs.includes(a.icon);
+                    const equipped = this.state.accIcon === a.icon;
+                    return `
+                        <div class="p-3 rounded-2xl border-2 ${equipped ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'} text-center space-y-1.5">
+                            <div class="text-3xl h-10 flex items-center justify-center">${a.icon || '🚫'}</div>
+                            <div class="font-black text-xs text-slate-800">${a.name}</div>
+                            <button onclick="game.buyOrEquipAcc('${a.icon}', ${a.price})" class="w-full py-1.5 rounded-xl font-black text-xs ${equipped ? 'bg-emerald-600 text-white' : (owned ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-400 text-amber-950')}">
+                                ${equipped ? 'مُختار ✓' : (owned ? 'ارتداء' : `${this.fmt(a.price)} 🪙`)}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            buyOrEquipHero(icon, price) {
+                if (this.state.ownedHeroes.includes(icon)) {
+                    this.state.heroIcon = icon;
+                } else if (this.state.coins >= price) {
+                    this.state.coins -= price;
+                    this.state.ownedHeroes.push(icon);
+                    this.state.heroIcon = icon;
+                    this.audio.playFanfare();
+                } else {
+                    this.audio.playWrong();
+                    return;
+                }
+                this.saveData();
+                this.renderShop();
+            },
+
+            buyOrEquipAcc(icon, price) {
+                if (this.state.ownedAccs.includes(icon)) {
+                    this.state.accIcon = icon;
+                } else if (this.state.coins >= price) {
+                    this.state.coins -= price;
+                    this.state.ownedAccs.push(icon);
+                    this.state.accIcon = icon;
+                    this.audio.playFanfare();
+                } else {
+                    this.audio.playWrong();
+                    return;
+                }
+                this.saveData();
+                this.renderShop();
+            },
+
+            // =========================================================
+            // لوحة تتبع التعلمات (Learning Analytics Dashboard)
+            // =========================================================
+            openDashboard() {
+                this.audio.playClick();
+                const acc = this.state.totalAnswered > 0
+                    ? Math.round((this.state.totalCorrect / this.state.totalAnswered) * 100)
+                    : 0;
+                const totalStars = Object.values(this.state.worldStars).reduce((a, b) => a + b, 0);
+                const mins = Math.max(1, Math.round(this.state.totalSecondsSpent / 60));
+                const masteredCount = [2,3,4,5,6,7,8,9,10].filter(w => (this.state.worldBestPct[w] || 0) >= 80).length;
+
+                document.getElementById('dash-accuracy').textContent = `${this.fmt(acc)}%`;
+                document.getElementById('dash-rewards').textContent = `${this.fmt(totalStars)} ⭐ | ${this.fmt(this.state.coins)} 🪙`;
+                document.getElementById('dash-time').textContent = `${this.fmt(mins)} د`;
+                document.getElementById('dash-mastered').textContent = `${this.fmt(masteredCount)} / ${this.fmt(9)}`;
+
+                // تطور المستويات
+                const wp = document.getElementById('dash-worlds-progress');
+                wp.innerHTML = [2,3,4,5,6,7,8,9,10].map(w => {
+                    const p = this.state.worldBestPct[w] || 0;
+                    const ok = p >= 80;
+                    return `
+                        <div class="p-2 rounded-xl border ${ok ? 'bg-emerald-100 border-emerald-300 text-emerald-900' : 'bg-white border-slate-200 text-slate-600'}">
+                            <div class="font-black text-sm">${this.fmt(w)}</div>
+                            <div class="text-[11px] font-bold">${this.fmt(p)}%</div>
+                        </div>
+                    `;
+                }).join('');
+
+                // العمليات الصعبة
+                const hardEl = document.getElementById('dash-hard-ops');
+                const mistakes = Object.entries(this.state.mistakesCount || {}).sort((a, b) => b[1] - a[1]);
+                if (mistakes.length === 0) {
+                    hardEl.innerHTML = `<span class="text-emerald-700">لا توجد عمليات صعبة مسجلة حالياً! أداء رائع 🌟</span>`;
+                } else {
+                    hardEl.innerHTML = mistakes.slice(0, 8).map(([k, cnt]) => {
+                        const [a, b] = k.split('x');
+                        return `<span class="bg-white border border-rose-300 text-rose-800 px-3 py-1 rounded-xl" dir="ltr">${this.fmt(a)} × ${this.fmt(b)} (${this.fmt(cnt)} أخطاء)</span>`;
+                    }).join('');
+                }
+
+                // الشارات
+                const bGrid = document.getElementById('dash-badges-grid');
+                bGrid.innerHTML = this.badgesCatalog.map(b => {
+                    const unlocked = this.state.badges.includes(b.id);
+                    return `
+                        <div class="p-3 rounded-2xl border-2 ${unlocked ? 'bg-amber-50 border-amber-300' : 'bg-slate-50 border-slate-200 opacity-55'} flex items-center gap-2.5">
+                            <span class="text-2xl">${unlocked ? b.icon : '🔒'}</span>
+                            <div>
+                                <div class="font-black text-xs text-slate-900">${b.title}</div>
+                                <div class="text-[10px] font-bold text-slate-500">${b.desc}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('modal-dashboard').classList.remove('hidden');
+            },
+
+            closeModal(id) {
+                document.getElementById(id).classList.add('hidden');
+            },
+
+            toggleSound() {
+                this.audio.enabled = !this.audio.enabled;
+                document.getElementById('sound-btn').innerHTML = this.audio.enabled
+                    ? '<i class="fa-solid fa-volume-high text-indigo-600"></i>'
+                    : '<i class="fa-solid fa-volume-xmark text-slate-400"></i>';
+            }
+        };
+
+        window.onload = () => game.init();
+    </script>
+</body>
+</html>
